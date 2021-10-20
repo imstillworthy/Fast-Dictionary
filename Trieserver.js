@@ -2,6 +2,11 @@ const express = require('express')
 const app = express()
 const path = require('path')
 const fs = require('fs')
+const FcfsCache = require('./fcfsCache')
+
+
+const Cache = new FcfsCache(10)
+
 
 app.use(express.json())
 app.use(express.static('public'))
@@ -180,11 +185,19 @@ app.get('/', (req, res) => {
 app.get('/search', function (req, res) {
     console.log(req.body.word);
     const searchWord = req.body.word
-    const resultArr = trie.meaning(searchWord)
-    const result = {
-        meaning: resultArr[0],
-        usage_1: resultArr[1],
-        usage_2: resultArr[2]
+
+    let result;
+    /*
+        Using FCFS Cache
+    */
+    result = Cache.search(searchWord)
+    if (!result) {
+        const resultArr = trie.meaning(searchWord)
+        result = {
+            meaning: resultArr[0],
+            usage_1: resultArr[1],
+            usage_2: resultArr[2]
+        }
     }
     res.send(result)
 })
@@ -192,7 +205,7 @@ app.get('/search', function (req, res) {
 app.get('/autofill', function (req, res) {
     const searchWord = req.body.word
     console.log(searchWord);
-    suggestions=[]
+    suggestions = []
     trie.find(searchWord)
     console.log(suggestions);
     res.send({
