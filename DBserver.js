@@ -1,7 +1,7 @@
 const express = require('express')
 const app = express()
 const path = require('path')
-const FcfsCache = require('./fcfsCache')
+const FcfsCache = require('./util/fcfsCache')
 const mongoose = require('mongoose');
 
 main().catch(err => console.log(err));
@@ -30,8 +30,7 @@ const UserSchema = new mongoose.Schema({
 const db = mongoose.model("dictionary", UserSchema);
 
 
-const Cache = new FcfsCache(10)
-// const db = require('./Model/dictionary')
+const Cache = new FcfsCache(1)
 
 
 app.use(express.json())
@@ -44,13 +43,16 @@ app.get('/', (req, res) => {
 })
 
 app.get('/search', function (req, res) {
+    var startTime = Date.now();
+
     let searchWord = req.body.word
     searchWord = searchWord.toLowerCase()
     let start = searchWord.substr(0, 1);
     let rest = searchWord.substr(1)
     start = start.toUpperCase()
     searchWord = start + rest
-    console.log(searchWord);
+
+    console.log("Word Searched = " + searchWord);
 
 
     let result;
@@ -59,8 +61,8 @@ app.get('/search', function (req, res) {
     */
     result = Cache.search(searchWord)
 
-    console.log(result);
     if (!result) {
+        console.log("Cache Miss");
         db.findOne({ word: searchWord }, (err, data) => {
             if (data) {
                 result = {
@@ -78,15 +80,20 @@ app.get('/search', function (req, res) {
             Cache.insert(searchWord, result)  // Comment this line to disable cache
 
             res.send(result)
+            var endTime = Date.now();
+            console.log(`Execution time: ${endTime - startTime} ms\n`);
         })
     }
     else {
+        console.log('Cache Hit');
         res.send(result)
+        var endTime = Date.now();
+        console.log(`Execution time: ${endTime - startTime} ms\n`);
     }
 })
 
 
 
 app.listen(3000, () => {
-    console.log(`http://localhost:3000`);
+    console.log(`Listening at http://localhost:3000\n`);
 })

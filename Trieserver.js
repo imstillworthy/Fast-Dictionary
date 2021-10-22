@@ -2,10 +2,10 @@ const express = require('express')
 const app = express()
 const path = require('path')
 const fs = require('fs')
-const FcfsCache = require('./fcfsCache')
+const FcfsCache = require('./util/fcfsCache')
 
 
-const Cache = new FcfsCache(10)
+const Cache = new FcfsCache(1)
 
 
 app.use(express.json())
@@ -164,14 +164,13 @@ Trie.prototype.meaning = function (prefix) {
 
     return [node.meaning, node.usage_1, node.usage_2]
 
-
 };
 
 
 // instantiate our trie
 var trie = new Trie();
 
-const data = fs.readFileSync("data.json")
+const data = fs.readFileSync("util/data.json")
 const obj = JSON.parse(data)
 
 obj.forEach(element => {
@@ -183,23 +182,41 @@ app.get('/', (req, res) => {
 })
 
 app.get('/search', function (req, res) {
-    console.log(req.body.word);
-    const searchWord = req.body.word
+    var startTime = Date.now();
 
+    let searchWord = req.body.word
+    searchWord = searchWord.toLowerCase()
+
+    console.log("Word Searched = " + searchWord);
     let result;
     /*
         Using FCFS Cache
     */
     result = Cache.search(searchWord)
     if (!result) {
+        console.log('Cache Miss');
         const resultArr = trie.meaning(searchWord)
-        result = {
-            meaning: resultArr[0],
-            usage_1: resultArr[1],
-            usage_2: resultArr[2]
+        // console.log(resultArr);
+        if (resultArr[0]!=null) {
+            result = {
+                meaning: resultArr[0],
+                usage_1: resultArr[1],
+                usage_2: resultArr[2]
+            }
         }
+        else {
+            result = {
+                error: 'word not found'
+            }
+        }
+        Cache.insert(searchWord, result)
+    }
+    else {
+        console.log('Cache Hit');
     }
     res.send(result)
+    var endTime = Date.now();
+    console.log(`Execution time: ${endTime - startTime} ms\n`);
 })
 
 app.get('/autofill', function (req, res) {
@@ -214,5 +231,5 @@ app.get('/autofill', function (req, res) {
 })
 
 app.listen(3000, () => {
-    console.log(`http://localhost:3000`);
+    console.log(`Listening at http://localhost:3000\n`);
 })
